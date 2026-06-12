@@ -33,7 +33,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: mon-agent
-          image: ghcr.io/unict-cclab/mon-agent:latest
+          image: ghcr.io/unict-cclab/mon-agent:v0.0.1
           imagePullPolicy: IfNotPresent
           env:
             - name: PROMETHEUS_URL
