@@ -41,6 +41,6 @@ spec:
             - name: SCRAPE_PERIOD_SECONDS
               value: "30"
             - name: PROMQL_RANGE
-              value: 30s
+              value: 5m
             - name: NAMESPACE_LABEL_SELECTOR
               value: mon-agent/enabled=true

@@ -27,7 +27,7 @@ labels. The agent uses those labels, exposed in Prometheus as `label_group` and
 | --- | --- | --- |
 | `PROMETHEUS_URL` | `http://prometheus-stack-kube-prom-prometheus.observability:9090` | Prometheus HTTP API base URL |
 | `SCRAPE_PERIOD_SECONDS` | `30` | Loop period in seconds |
-| `PROMQL_RANGE` | `30s` | Range window used in `rate(...)` queries |
+| `PROMQL_RANGE` | `5m` | Range window used in `rate(...)` queries |
 | `NAMESPACE_LABEL_SELECTOR` | empty | Kubernetes label selector for namespaces that contain deployments to annotate |
 | `KUBECONFIG` | in-cluster config, then `~/.kube/config` | Optional local kubeconfig for development |
 
@@ -35,16 +35,16 @@ labels. The agent uses those labels, exposed in Prometheus as `label_group` and
 
 Nodes:
 
-- `cpu-usage`
-- `memory-usage`
-- `network-latency.<destination-node>`
+- `cpu-usage`: CPU cores
+- `memory-usage`: MiB
+- `network-latency.<destination-node>`: milliseconds
 
 Deployments:
 
-- `cpu-usage`
-- `memory-usage`
-- `rps.<peer-workload>`
-- `traffic.<peer-workload>`
+- `cpu-usage`: CPU cores
+- `memory-usage`: MiB
+- `rps.<peer-workload>`: requests per second
+- `traffic.<peer-workload>`: bytes per second
 
 Deployment CPU and memory are grouped by the current Kubernetes `group` and
 `app` labels. In Prometheus those labels are exposed by kube-state-metrics as

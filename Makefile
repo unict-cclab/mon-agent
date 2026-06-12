@@ -1,7 +1,7 @@
 IMG ?= ghcr.io/unict-cclab/mon-agent:latest
 PROMETHEUS_URL ?= http://localhost:9090
 NAMESPACE_LABEL_SELECTOR ?= mon-agent/enabled=true
-SCRAPE_PERIOD_SECONDS ?= 30
+SCRAPE_PERIOD_SECONDS ?= 300
 
 run:
 	PROMETHEUS_URL=${PROMETHEUS_URL} \

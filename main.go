@@ -29,7 +29,7 @@ import (
 const (
 	defaultPrometheusURL = "http://prometheus-stack-kube-prom-prometheus.observability:9090"
 	defaultPeriodSeconds = 30
-	defaultPromQLRange   = "30s"
+	defaultPromQLRange   = "5m"
 	queryTimeout         = 10 * time.Second
 )
 
@@ -319,7 +319,7 @@ func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string
 	}
 
 	rpsQuery := `sum by (source_workload_namespace, source_workload, destination_workload_namespace, destination_workload) (` +
-		`rate(istio_requests_total{reporter="destination",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `]))`
+		`rate(istio_requests_total{reporter="destination",destination_workload_namespace=~"` + namespaceRegex + `",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `]))`
 	rps, err := a.queryVector(ctx, rpsQuery)
 	if err != nil {
 		return out, fmt.Errorf("istio rps query: %w", err)
@@ -329,11 +329,11 @@ func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string
 	}
 
 	trafficQuery := `sum by (source_workload_namespace, source_workload, destination_workload_namespace, destination_workload) (` +
-		`rate(istio_request_bytes_sum{reporter="destination",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `]) + ` +
-		`rate(istio_response_bytes_sum{reporter="destination",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `])) ` +
+		`rate(istio_request_bytes_sum{reporter="destination",destination_workload_namespace=~"` + namespaceRegex + `",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `]) + ` +
+		`rate(istio_response_bytes_sum{reporter="destination",destination_workload_namespace=~"` + namespaceRegex + `",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `])) ` +
 		`or sum by (source_workload_namespace, source_workload, destination_workload_namespace, destination_workload) (` +
-		`rate(istio_tcp_sent_bytes_total{reporter="destination",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `]) + ` +
-		`rate(istio_tcp_received_bytes_total{reporter="destination",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `]))`
+		`rate(istio_tcp_sent_bytes_total{reporter="destination",destination_workload_namespace=~"` + namespaceRegex + `",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `]) + ` +
+		`rate(istio_tcp_received_bytes_total{reporter="destination",destination_workload_namespace=~"` + namespaceRegex + `",source_workload!="unknown",destination_workload!="unknown"}[` + a.cfg.PromQLRange + `]))`
 	traffic, err := a.queryVector(ctx, trafficQuery)
 	if err != nil {
 		return out, fmt.Errorf("istio traffic query: %w", err)
