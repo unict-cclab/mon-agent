@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mon-agent
+  namespace: observability
+  labels:
+    app: mon-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mon-agent
+  template:
+    metadata:
+      labels:
+        app: mon-agent
+    spec:
+      serviceAccountName: mon-agent
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: nodepool
+                    operator: In
+                    values:
+                      - management
+      tolerations:
+        - key: nodepool
+          operator: Equal
+          value: management
+          effect: NoSchedule
+      containers:
+        - name: mon-agent
+          image: ghcr.io/unict-cclab/mon-agent:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PROMETHEUS_URL
+              value: http://prometheus-stack-kube-prom-prometheus.observability:9090
+            - name: SCRAPE_PERIOD_SECONDS
+              value: "30"
+            - name: PROMQL_RANGE
+              value: 30s
+            - name: NAMESPACE_LABEL_SELECTOR
+              value: mon-agent/enabled=true
