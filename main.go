@@ -241,7 +241,7 @@ func (a *agent) selectedDeployments(ctx context.Context, namespaces []string) ([
 func (a *agent) nodeAnnotations(ctx context.Context) (map[string]map[string]string, error) {
 	out := map[string]map[string]string{}
 
-	cpu, err := a.queryVector(ctx, `sum by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[`+a.cfg.PromQLRange+`]))`)
+	cpu, err := a.queryVector(ctx, `1000 * sum by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[`+a.cfg.PromQLRange+`]))`)
 	if err != nil {
 		return out, fmt.Errorf("node cpu query: %w", err)
 	}
@@ -252,7 +252,7 @@ func (a *agent) nodeAnnotations(ctx context.Context) (map[string]map[string]stri
 		}
 	}
 
-	mem, err := a.queryVector(ctx, `avg by (instance) ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / (1024 * 1024))`)
+	mem, err := a.queryVector(ctx, `avg by (instance) (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)`)
 	if err != nil {
 		return out, fmt.Errorf("node memory query: %w", err)
 	}
@@ -292,7 +292,7 @@ func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string
 		byWorkload[workloadKey(dep.Namespace, dep.Name)] = dep
 	}
 
-	cpuQuery := `sum by (namespace, label_group, label_app) (` +
+	cpuQuery := `1000 * sum by (namespace, label_group, label_app) (` +
 		`rate(container_cpu_usage_seconds_total{namespace=~"` + namespaceRegex + `",container!="",image!=""}[` + a.cfg.PromQLRange + `]) ` +
 		`* on(namespace,pod) group_left(label_group,label_app) kube_pod_labels{namespace=~"` + namespaceRegex + `",label_app!=""})`
 	cpu, err := a.queryVector(ctx, cpuQuery)
@@ -307,7 +307,7 @@ func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string
 
 	memQuery := `sum by (namespace, label_group, label_app) (` +
 		`container_memory_working_set_bytes{namespace=~"` + namespaceRegex + `",container!="",image!=""} ` +
-		`* on(namespace,pod) group_left(label_group,label_app) kube_pod_labels{namespace=~"` + namespaceRegex + `",label_app!=""}) / (1024 * 1024)`
+		`* on(namespace,pod) group_left(label_group,label_app) kube_pod_labels{namespace=~"` + namespaceRegex + `",label_app!=""})`
 	mem, err := a.queryVector(ctx, memQuery)
 	if err != nil {
 		return out, fmt.Errorf("deployment memory query: %w", err)

@@ -35,14 +35,14 @@ labels. The agent uses those labels, exposed in Prometheus as `label_group` and
 
 Nodes:
 
-- `cpu-usage`: CPU cores
-- `memory-usage`: MiB
+- `cpu-usage`: CPU millicores
+- `memory-usage`: bytes
 - `network-latency.<destination-node>`: milliseconds
 
 Deployments:
 
-- `cpu-usage`: CPU cores
-- `memory-usage`: MiB
+- `cpu-usage`: CPU millicores
+- `memory-usage`: bytes
 - `rps.<peer-workload>`: requests per second
 - `traffic.<peer-workload>`: bytes per second
 
