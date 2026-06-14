@@ -27,13 +27,13 @@ spec:
                     values:
                       - management
       tolerations:
-        - key: nodepool
-          operator: Equal
-          value: management
-          effect: NoSchedule
+      - key: "ManagementOnly"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
       containers:
         - name: mon-agent
-          image: ghcr.io/unict-cclab/mon-agent:v0.0.2
+          image: ghcr.io/unict-cclab/mon-agent:v0.0.3
           imagePullPolicy: IfNotPresent
           env:
             - name: PROMETHEUS_URL

@@ -37,12 +37,16 @@ Nodes:
 
 - `cpu-usage`: CPU millicores
 - `memory-usage`: bytes
+- `disk-bandwidth`: bytes per second, read plus write
+- `network-bandwidth`: bytes per second, receive plus transmit
 - `network-latency.<destination-node>`: milliseconds
 
 Deployments:
 
 - `cpu-usage`: CPU millicores
 - `memory-usage`: bytes
+- `disk-bandwidth`: bytes per second, read plus write
+- `network-bandwidth`: bytes per second, receive plus transmit
 - `rps.<peer-workload>`: requests per second
 - `traffic.<peer-workload>`: bytes per second
 

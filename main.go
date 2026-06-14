@@ -263,6 +263,28 @@ func (a *agent) nodeAnnotations(ctx context.Context) (map[string]map[string]stri
 		}
 	}
 
+	disk, err := a.queryVector(ctx, `sum by (instance) (rate(node_disk_read_bytes_total{device!~"^(ram|loop|fd|sr|dm-|md).*"}[`+a.cfg.PromQLRange+`]) + rate(node_disk_written_bytes_total{device!~"^(ram|loop|fd|sr|dm-|md).*"}[`+a.cfg.PromQLRange+`]))`)
+	if err != nil {
+		return out, fmt.Errorf("node disk bandwidth query: %w", err)
+	}
+	for _, sample := range disk {
+		node := nodeNameFromMetric(sample.Metric)
+		if node != "" {
+			put(out, node, "disk-bandwidth", formatFloat(float64(sample.Value)))
+		}
+	}
+
+	network, err := a.queryVector(ctx, `sum by (instance) (rate(node_network_receive_bytes_total{device!="lo"}[`+a.cfg.PromQLRange+`]) + rate(node_network_transmit_bytes_total{device!="lo"}[`+a.cfg.PromQLRange+`]))`)
+	if err != nil {
+		return out, fmt.Errorf("node network bandwidth query: %w", err)
+	}
+	for _, sample := range network {
+		node := nodeNameFromMetric(sample.Metric)
+		if node != "" {
+			put(out, node, "network-bandwidth", formatFloat(float64(sample.Value)))
+		}
+	}
+
 	latencyQuery := `1000 * sum by (origin_node, destination_node) (rate(node_latency_sum[` + a.cfg.PromQLRange + `])) / sum by (origin_node, destination_node) (rate(node_latency_count[` + a.cfg.PromQLRange + `]))`
 	latencies, err := a.queryVector(ctx, latencyQuery)
 	if err != nil {
@@ -315,6 +337,34 @@ func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string
 	for _, sample := range mem {
 		for _, dep := range byAppGroup[appGroupKey(string(sample.Metric["namespace"]), string(sample.Metric["label_app"]), string(sample.Metric["label_group"]))] {
 			put(out, deploymentKey(dep.Namespace, dep.Name), "memory-usage", formatFloat(float64(sample.Value)))
+		}
+	}
+
+	diskQuery := `sum by (namespace, label_group, label_app) ((` +
+		`rate(container_fs_reads_bytes_total{namespace=~"` + namespaceRegex + `",container!="",image!=""}[` + a.cfg.PromQLRange + `]) + ` +
+		`rate(container_fs_writes_bytes_total{namespace=~"` + namespaceRegex + `",container!="",image!=""}[` + a.cfg.PromQLRange + `])) ` +
+		`* on(namespace,pod) group_left(label_group,label_app) kube_pod_labels{namespace=~"` + namespaceRegex + `",label_app!=""})`
+	disk, err := a.queryVector(ctx, diskQuery)
+	if err != nil {
+		return out, fmt.Errorf("deployment disk bandwidth query: %w", err)
+	}
+	for _, sample := range disk {
+		for _, dep := range byAppGroup[appGroupKey(string(sample.Metric["namespace"]), string(sample.Metric["label_app"]), string(sample.Metric["label_group"]))] {
+			put(out, deploymentKey(dep.Namespace, dep.Name), "disk-bandwidth", formatFloat(float64(sample.Value)))
+		}
+	}
+
+	networkQuery := `sum by (namespace, label_group, label_app) ((` +
+		`rate(container_network_receive_bytes_total{namespace=~"` + namespaceRegex + `",pod!="",interface!="lo"}[` + a.cfg.PromQLRange + `]) + ` +
+		`rate(container_network_transmit_bytes_total{namespace=~"` + namespaceRegex + `",pod!="",interface!="lo"}[` + a.cfg.PromQLRange + `])) ` +
+		`* on(namespace,pod) group_left(label_group,label_app) kube_pod_labels{namespace=~"` + namespaceRegex + `",label_app!=""})`
+	network, err := a.queryVector(ctx, networkQuery)
+	if err != nil {
+		return out, fmt.Errorf("deployment network bandwidth query: %w", err)
+	}
+	for _, sample := range network {
+		for _, dep := range byAppGroup[appGroupKey(string(sample.Metric["namespace"]), string(sample.Metric["label_app"]), string(sample.Metric["label_group"]))] {
+			put(out, deploymentKey(dep.Namespace, dep.Name), "network-bandwidth", formatFloat(float64(sample.Value)))
 		}
 	}
 
