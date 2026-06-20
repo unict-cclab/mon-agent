@@ -270,7 +270,7 @@ func (a *agent) nodeAnnotations(ctx context.Context) (map[string]map[string]stri
 	for _, sample := range disk {
 		node := nodeNameFromMetric(sample.Metric)
 		if node != "" {
-			put(out, node, "disk-bandwidth", formatFloat(float64(sample.Value)))
+			put(out, node, "disk-throughput", formatFloat(float64(sample.Value)))
 		}
 	}
 
@@ -281,7 +281,7 @@ func (a *agent) nodeAnnotations(ctx context.Context) (map[string]map[string]stri
 	for _, sample := range network {
 		node := nodeNameFromMetric(sample.Metric)
 		if node != "" {
-			put(out, node, "network-bandwidth", formatFloat(float64(sample.Value)))
+			put(out, node, "network-throughput", formatFloat(float64(sample.Value)))
 		}
 	}
 
@@ -291,18 +291,39 @@ func (a *agent) nodeAnnotations(ctx context.Context) (map[string]map[string]stri
 		return out, fmt.Errorf("node latency query: %w", err)
 	}
 	for _, sample := range latencies {
-		origin := string(sample.Metric["origin_node"])
-		destination := string(sample.Metric["destination_node"])
-		if origin == "" || destination == "" {
-			continue
-		}
-		put(out, origin, "network-latency."+destination, formatFloat(float64(sample.Value)))
+		annotateNodePeerMetric(out, sample, "network-latency")
+	}
+
+	bandwidth, err := a.queryVector(ctx, `max by (origin_node, destination_node) (node_bandwidth_bytes_per_second)`)
+	if err != nil {
+		return out, fmt.Errorf("node bandwidth query: %w", err)
+	}
+	for _, sample := range bandwidth {
+		annotateNodePeerMetric(out, sample, "network-bandwidth")
+	}
+
+	packetLoss, err := a.queryVector(ctx, `max by (origin_node, destination_node) (node_packet_loss_ratio)`)
+	if err != nil {
+		return out, fmt.Errorf("node packet loss query: %w", err)
+	}
+	for _, sample := range packetLoss {
+		annotateNodePeerMetric(out, sample, "packet-loss")
 	}
 	for node := range out {
 		put(out, node, "network-latency."+node, "0")
+		put(out, node, "packet-loss."+node, "0")
 	}
 
 	return out, nil
+}
+
+func annotateNodePeerMetric(out map[string]map[string]string, sample *model.Sample, prefix string) {
+	origin := string(sample.Metric["origin_node"])
+	destination := string(sample.Metric["destination_node"])
+	if origin == "" || destination == "" {
+		return
+	}
+	put(out, origin, prefix+"."+destination, formatFloat(float64(sample.Value)))
 }
 
 func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string, deployments []deploymentRef) (map[string]map[string]string, error) {
@@ -350,7 +371,7 @@ func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string
 	}
 	for _, sample := range disk {
 		for _, dep := range byAppGroup[appGroupKey(string(sample.Metric["namespace"]), string(sample.Metric["label_app"]), string(sample.Metric["label_group"]))] {
-			put(out, deploymentKey(dep.Namespace, dep.Name), "disk-bandwidth", formatFloat(float64(sample.Value)))
+			put(out, deploymentKey(dep.Namespace, dep.Name), "disk-throughput", formatFloat(float64(sample.Value)))
 		}
 	}
 
@@ -364,7 +385,7 @@ func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string
 	}
 	for _, sample := range network {
 		for _, dep := range byAppGroup[appGroupKey(string(sample.Metric["namespace"]), string(sample.Metric["label_app"]), string(sample.Metric["label_group"]))] {
-			put(out, deploymentKey(dep.Namespace, dep.Name), "network-bandwidth", formatFloat(float64(sample.Value)))
+			put(out, deploymentKey(dep.Namespace, dep.Name), "network-throughput", formatFloat(float64(sample.Value)))
 		}
 	}
 
@@ -456,9 +477,16 @@ func (a *agent) patchDeployment(ctx context.Context, dep *appsv1.Deployment, ann
 }
 
 func annotationPatch(annotations map[string]string) ([]byte, error) {
+	values := make(map[string]any, len(annotations)+2)
+	for key, value := range annotations {
+		values[key] = value
+	}
+	// A JSON merge patch requires explicit nulls to remove legacy keys.
+	values["disk-bandwidth"] = nil
+	values["network-bandwidth"] = nil
 	return json.Marshal(map[string]any{
 		"metadata": map[string]any{
-			"annotations": annotations,
+			"annotations": values,
 		},
 	})
 }
@@ -466,6 +494,9 @@ func annotationPatch(annotations map[string]string) ([]byte, error) {
 func mergeAnnotations(current, updates map[string]string) map[string]string {
 	merged := make(map[string]string, len(current)+len(updates))
 	for key, value := range current {
+		if key == "disk-bandwidth" || key == "network-bandwidth" {
+			continue
+		}
 		merged[key] = value
 	}
 	for key, value := range updates {

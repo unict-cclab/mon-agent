@@ -37,16 +37,22 @@ Nodes:
 
 - `cpu-usage`: CPU millicores
 - `memory-usage`: bytes
-- `disk-bandwidth`: bytes per second, read plus write
-- `network-bandwidth`: bytes per second, receive plus transmit
+- `disk-throughput`: bytes per second, read plus write
+- `network-throughput`: bytes per second, receive plus transmit
 - `network-latency.<destination-node>`: milliseconds
+- `network-bandwidth.<destination-node>`: effective available bandwidth in bytes per second
+- `packet-loss.<destination-node>`: ICMP packet-loss ratio from `0` to `1`
+
+The `network-throughput` annotation is aggregate interface traffic from
+node-exporter. The per-destination `network-bandwidth.<destination-node>`
+annotations are directional available-bandwidth measurements from Mentat.
 
 Deployments:
 
 - `cpu-usage`: CPU millicores
 - `memory-usage`: bytes
-- `disk-bandwidth`: bytes per second, read plus write
-- `network-bandwidth`: bytes per second, receive plus transmit
+- `disk-throughput`: bytes per second, read plus write
+- `network-throughput`: bytes per second, receive plus transmit
 - `rps.<peer-workload>`: requests per second
 - `traffic.<peer-workload>`: bytes per second
 
