@@ -41,7 +41,7 @@ Nodes:
 - `network-throughput`: bytes per second, receive plus transmit
 - `network-latency.<destination-node>`: milliseconds
 - `network-bandwidth.<destination-node>`: effective available bandwidth in bytes per second
-- `packet-loss.<destination-node>`: ICMP packet-loss ratio from `0` to `1`
+- `packet-loss.<destination-node>`: ICMP packet-loss percentage from `0` to `100`
 
 The `network-throughput` annotation is aggregate interface traffic from
 node-exporter. The per-destination `network-bandwidth.<destination-node>`

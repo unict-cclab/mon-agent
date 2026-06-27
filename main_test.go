@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/prometheus/common/model"
@@ -22,9 +23,20 @@ func TestAnnotateNodePeerMetric(t *testing.T) {
 		t.Fatalf("bandwidth annotation = %q, want %q", got, want)
 	}
 
-	sample.Value = 0.25
-	annotateNodePeerMetric(out, sample, "packet-loss")
-	if got, want := out["node-a"]["packet-loss.node-b"], "0.250000"; got != want {
+}
+
+func TestAnnotatePacketLossConvertsRatioToPercent(t *testing.T) {
+	out := map[string]map[string]string{}
+	sample := &model.Sample{
+		Metric: model.Metric{
+			"origin_node":      "node-a",
+			"destination_node": "node-b",
+		},
+		Value: 0.25,
+	}
+
+	annotatePacketLoss(out, sample)
+	if got, want := out["node-a"]["packet-loss.node-b"], "25.000000"; got != want {
 		t.Fatalf("packet-loss annotation = %q, want %q", got, want)
 	}
 }
@@ -52,9 +64,16 @@ func TestAnnotationPatchDeletesLegacyThroughputNames(t *testing.T) {
 
 func TestAnnotateNodePeerMetricRequiresNodeLabels(t *testing.T) {
 	out := map[string]map[string]string{}
-	annotateNodePeerMetric(out, &model.Sample{Metric: model.Metric{}, Value: 1}, "packet-loss")
+	annotatePacketLoss(out, &model.Sample{Metric: model.Metric{}, Value: 1})
 	if len(out) != 0 {
 		t.Fatalf("annotation added without node labels: %#v", out)
+	}
+}
+
+func TestPacketLossQueryUsesConfiguredRange(t *testing.T) {
+	query := packetLossQuery("10m")
+	if want := `avg_over_time(node_packet_loss_ratio[10m])`; !strings.Contains(query, want) {
+		t.Fatalf("packet loss query = %q, want it to contain %q", query, want)
 	}
 }
 

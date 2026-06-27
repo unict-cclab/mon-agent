@@ -302,12 +302,12 @@ func (a *agent) nodeAnnotations(ctx context.Context) (map[string]map[string]stri
 		annotateNodePeerMetric(out, sample, "network-bandwidth")
 	}
 
-	packetLoss, err := a.queryVector(ctx, `max by (origin_node, destination_node) (node_packet_loss_ratio)`)
+	packetLoss, err := a.queryVector(ctx, packetLossQuery(a.cfg.PromQLRange))
 	if err != nil {
 		return out, fmt.Errorf("node packet loss query: %w", err)
 	}
 	for _, sample := range packetLoss {
-		annotateNodePeerMetric(out, sample, "packet-loss")
+		annotatePacketLoss(out, sample)
 	}
 	for node := range out {
 		put(out, node, "network-latency."+node, "0")
@@ -324,6 +324,19 @@ func annotateNodePeerMetric(out map[string]map[string]string, sample *model.Samp
 		return
 	}
 	put(out, origin, prefix+"."+destination, formatFloat(float64(sample.Value)))
+}
+
+func packetLossQuery(promQLRange string) string {
+	return `avg by (origin_node, destination_node) (avg_over_time(node_packet_loss_ratio[` + promQLRange + `]))`
+}
+
+func annotatePacketLoss(out map[string]map[string]string, sample *model.Sample) {
+	origin := string(sample.Metric["origin_node"])
+	destination := string(sample.Metric["destination_node"])
+	if origin == "" || destination == "" {
+		return
+	}
+	put(out, origin, "packet-loss."+destination, formatFloat(100*float64(sample.Value)))
 }
 
 func (a *agent) deploymentAnnotations(ctx context.Context, namespaceRegex string, deployments []deploymentRef) (map[string]map[string]string, error) {
